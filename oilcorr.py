@@ -87,6 +87,31 @@ class historical_pricing:
 
         return info
 
+    def oil_fetch(self,PreviousDate):
+
+        #yesterdate = CurrentDate - timedelta(days=1)
+        #yesterdate = self.DateAdjustment(yesterdate)
+        #CurrentYear = str(yesterdate.year)
+        #CurrentMonth = str(yesterdate.month)
+        #Yesterday = str(yesterdate.day)
+
+        oil_file = 'https://www.quandl.com/api/v3/datasets/FRED/DCOILWTICO.csv?' + 'start_date='+ str(PreviousDate.year) +'-'+str(PreviousDate.month)+'-'+str(PreviousDate.day)
+        file_object = urllib.urlopen(oil_file)
+        pricereader = csv.DictReader(file_object)
+
+        o_dict = {}
+
+        for row in pricereader:
+
+            try:
+                o_dict[row['DATE']] = [float((row['VALUE']))]
+            except ValueError:
+                pass
+
+        o_dict = self.change_array(o_dict)
+
+        return o_dict
+
     def change_array(self,o_dict):
 
         for w in o_dict:
@@ -123,6 +148,7 @@ class historical_pricing:
 
         return (np.array(oil_price_match),np.array(stock_price_match))
 
+
 #Determine Today's Date
 CurrentDate = date.today()
 #Create historical pricing instance
@@ -134,36 +160,34 @@ oil_dict = {}
 adjObj = instant.DateAdjustment(CurrentDate)
 sixmonth = instant.SixMonthDate(adjObj,6)
 
+#with open('\Users\Administrator\Desktop\TrendingValue\TSX6.csv', 'rU') as c:
 with open('\Users\Administrator\Documents\Stock Analysis\energy_constituents.csv', 'r') as c:
     reader =csv.DictReader(c)
     for row in reader:
-        dict = instant.price_array(adjObj,sixmonth,row[' ticker'])
-        commod_dict[row[' ticker']] = dict
+        dict = instant.price_array(adjObj,sixmonth,row[' ticker']) # ' ticker'
+        commod_dict[row[' ticker']] = dict # ' ticker'
 
-##https://research.stlouisfed.org/fred2/series/DCOILWTICO/downloaddata
-with open('\Users\Administrator\Documents\Stock Analysis\oil.csv', 'r') as o:
-    reader =csv.DictReader(o)
-    for row in reader:
-        try:
-            oil_dict[row['DATE']] = [float((row['VALUE']))]
-        except ValueError:
-            pass
-    oil_dict = instant.change_array(oil_dict)
+oil_dict = instant.oil_fetch(sixmonth)
 
 for i, company in enumerate(commod_dict):
 
-    plt.figure(i)
+    print company
 
     (oil_y,stock_y) = instant.date_matching(oil_dict,commod_dict[company])
-    xcorr = signal.correlate(oil_y,stock_y)
+
+    try:
+        xcorr = signal.correlate(oil_y,stock_y)
+    except ValueError:
+        continue
+
     delay = np.argmax(xcorr) - (len(oil_y) -1)
 
-    plt.plot(np.arange(0,np.size(oil_y),1),oil_y, 'g')
-    plt.plot(np.arange(0,np.size(stock_y),1),stock_y,'b')
-    plt.xlabel('Day Sample')
-    plt.ylabel('Daily Price % Change')
-    plt.title('%s vs WTI' %(company))
-    plt.figtext(.5,.95,delay)
+    f, (ax1,ax2) = plt.subplots(2)
+    ax1.plot(np.arange(0,np.size(oil_y),1),oil_y, 'g')
+    ax1.plot(np.arange(0,np.size(stock_y),1),stock_y, 'b')
+    ax2.scatter(oil_y,stock_y)
+    plt.figtext(0.3,0.02,'Cross Correlation Delay = %s days'%(delay))
+    ax1.set_title('WTI Daily vs %s'%(company))
     plt.show()
 
-print 'done;'
+
