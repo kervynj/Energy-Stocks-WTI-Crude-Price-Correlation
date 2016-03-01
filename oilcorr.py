@@ -161,7 +161,7 @@ adjObj = instant.DateAdjustment(CurrentDate)
 sixmonth = instant.SixMonthDate(adjObj,6)
 
 #with open('\Users\Administrator\Desktop\TrendingValue\TSX6.csv', 'rU') as c:
-with open('\Users\Administrator\Documents\Stock Analysis\energy_constituents.csv', 'r') as c:
+with open('energy_constituents.csv', 'r') as c:
     reader =csv.DictReader(c)
     for row in reader:
         dict = instant.price_array(adjObj,sixmonth,row[' ticker']) # ' ticker'
